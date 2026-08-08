@@ -58,19 +58,19 @@ def handle_continuous_code(driver, wait, ussd_code):
         time.sleep(8)
 
         print("12. Typing option 3...")
-        ussd_input = wait.until(EC.visibility_of_element_located((By.ID, "USSD_send")))
+        ussd_input = wait.until(EC.visibility_of_element_located((By.ID, "USSD_reply")))
         ussd_input.clear()
         ussd_input.send_keys("3")
-        driver.find_element(By.ID, "sendToNet").click()
+        driver.find_element(By.XPATH, "//input[@value='Reply']").click()
 
         print("13. Waiting for password prompt...")
         time.sleep(8)
 
         print("14. Typing password 1230...")
-        ussd_input = wait.until(EC.visibility_of_element_located((By.ID, "USSD_send")))
+        ussd_input = wait.until(EC.visibility_of_element_located((By.ID, "USSD_reply")))
         ussd_input.clear()
         ussd_input.send_keys("1230")
-        driver.find_element(By.ID, "sendToNet").click()
+        driver.find_element(By.XPATH, "//input[@value='Reply']").click()
         print("Success! Continuous code finished.")
 
     # ERROR HANDLING
