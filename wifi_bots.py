@@ -12,7 +12,6 @@ import time
 app = Flask(__name__)
 
 # --- HTML INTERFACE ---
-# --- HTML INTERFACE ---
 HTML_PAGE = """
 <!DOCTYPE html>
 <html>
@@ -26,16 +25,17 @@ HTML_PAGE = """
 
         <select name="ussd_code" onchange="this.form.submit()" style="padding:15px; font-size:20px; width:80%; max-width:300px; border-radius:10px; border:none; margin-bottom:20px; text-align:center; font-weight:bold;">
             <option value="" disabled selected>Tap to select a command...</option>
-            <option value="*323*1#">*323*1#</option>
-            <option value="*671*200*1#">*671*200*1#</option>
-            <option value="*939*77#">*939*77#</option>
-            <option value="*310#">*310#</option>
+            <option value="*323*1#">*323*1# (MTN Data)</option>
+            <option value="*671*200*1#">*671*200*1# (Airtel Data)</option>
+            <option value="*939*77#">*939*77# (Bank Recharge)</option>
+            <option value="*310#">*310# (Check Balance)</option>
         </select>
 
     </form>
 </body>
 </html>
 """
+
 
 @app.route('/')
 def home():
@@ -46,13 +46,14 @@ def home():
 def trigger_bot():
     user_input_code = request.form.get('ussd_code')
     print(f"Phone pressed the button! Code: {user_input_code}")
+    # Start the bot on a separate thread so the phone webpage doesn't freeze
     threading.Thread(target=master_router_bot, args=(user_input_code,)).start()
-    return "<h2 style='text-align:center; padding:50px; font-family:Arial;'>Command Sent! Look at your laptop screen.</h2>"
+    return "<h2 style='text-align:center; padding:50px; font-family:Arial; color:white; background-color:#222; height:100vh; margin:0;'>Command Sent!<br><br>Look at your laptop screen.</h2>"
 
 
-# --- NEW REUSABLE FUNCTION ---
+# --- NEW REUSABLE FUNCTION FOR CONTINUOUS USSD ---
 def handle_continuous_code(driver, wait, ussd_code):
-    # MULTI-STEP LOGIC
+    # MULTI-STEP LOGIC FOR BANK RECHARGE
     if ussd_code == "*939*77#":
         print("11. Waiting for continuous menu to load...")
         time.sleep(8)
@@ -82,7 +83,7 @@ def handle_continuous_code(driver, wait, ussd_code):
         pass
 
 
-# --- SELENIUM BOT ---
+# --- SELENIUM BOT SEQUENCES ---
 def run_mtn_sequence(driver, wait, short_wait, already_logged_in, ussd_code):
     print("\n--- INITIATING MTN DATA PROTOCOL ---")
     if not already_logged_in:
@@ -114,7 +115,7 @@ def run_mtn_sequence(driver, wait, short_wait, already_logged_in, ussd_code):
     send_button = driver.find_element(By.ID, "sendToNet")
     send_button.click()
 
-    # Call the reusable function right here
+    # Hand off to the continuous logic
     handle_continuous_code(driver, wait, ussd_code)
 
 
@@ -149,37 +150,48 @@ def run_airtel_sequence(driver, wait, short_wait, already_logged_in, ussd_code):
     send_button = driver.find_element(By.ID, "sendToNet")
     send_button.click()
 
-    # Call the reusable function right here too
+    # Hand off to the continuous logic
     handle_continuous_code(driver, wait, ussd_code)
 
 
 def master_router_bot(ussd_code):
     print("Initiating Master Auto-Detect Router Bot...")
+
+    # Ensure this exact path points to your chromedriver.exe
     my_service = Service(executable_path=r"D:\PycharmProjects\PythonProject2\chromedriver.exe")
     driver = webdriver.Chrome(service=my_service)
     wait = WebDriverWait(driver, 10)
-    short_wait = WebDriverWait(driver, 4)
+
+    # Increased wait time for visual elements to render
+    short_wait = WebDriverWait(driver, 5)
 
     try:
         driver.get("http://192.168.0.1")
+
+        # Give the Single Page Application time to load its CSS and hide the background menus
+        time.sleep(3)
+
         network = "UNKNOWN"
         logged_in = False
 
+        # --- DETECTION PHASE ---
         try:
-            short_wait.until(EC.presence_of_element_located((By.ID, "txtPwd")))
+            # Check if the password field is actually VISIBLE on the screen
+            short_wait.until(EC.visibility_of_element_located((By.ID, "txtPwd")))
             try:
                 driver.find_element(By.ID, "txtUsr")
                 network = "MTN"
             except:
                 network = "AIRTEL"
         except TimeoutException:
+            # If login isn't visible, check if we are already inside the dashboard
             try:
-                short_wait.until(EC.presence_of_element_located((By.ID, "menu_ussd")))
+                short_wait.until(EC.visibility_of_element_located((By.ID, "menu_ussd")))
                 network = "MTN"
                 logged_in = True
             except TimeoutException:
                 try:
-                    short_wait.until(EC.presence_of_element_located((By.XPATH, "//a[@href='#sleep_mode']")))
+                    short_wait.until(EC.visibility_of_element_located((By.XPATH, "//a[@href='#sleep_mode']")))
                     network = "AIRTEL"
                     logged_in = True
                 except TimeoutException:
@@ -195,6 +207,7 @@ def master_router_bot(ussd_code):
         elif network == "AIRTEL":
             run_airtel_sequence(driver, wait, short_wait, logged_in, ussd_code)
 
+        print("\n11. Waiting 30 seconds to let the network finish before closing...")
         time.sleep(30)
 
     except Exception as e:
@@ -206,4 +219,5 @@ def master_router_bot(ussd_code):
 
 if __name__ == "__main__":
     print("Web Server running! Connect your phone to the Wi-Fi.")
+    # Runs the server on port 5000 and exposes it to your local network
     app.run(host='0.0.0.0', port=5000)
