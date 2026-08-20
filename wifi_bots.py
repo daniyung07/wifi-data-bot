@@ -78,7 +78,7 @@ def handle_continuous_code(driver, wait, ussd_code):
 
     # ERROR HANDLING
     try:
-        ok_button = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, "okbtn")))
+        ok_button = WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.ID, "okbtn")))
         driver.execute_script("arguments[0].click();", ok_button)
         print("Error pop-up smashed instantly!")
     except TimeoutException:
@@ -128,7 +128,7 @@ def run_airtel_sequence(driver, wait, short_wait, already_logged_in, ussd_code):
         password_field = driver.find_element(By.ID, "txtPwd")
         password_field.send_keys("admin")
         password_field.send_keys(Keys.RETURN)
-        time.sleep(5)
+        time.sleep(2)
     else:
         print("Already logged in! Skipping straight to USSD...")
 
@@ -165,7 +165,7 @@ def master_router_bot(ussd_code):
     wait = WebDriverWait(driver, 10)
 
     # Increased wait time for visual elements to render
-    short_wait = WebDriverWait(driver, 5)
+    short_wait = WebDriverWait(driver, 2)
 
     try:
         driver.get("http://192.168.0.1")
